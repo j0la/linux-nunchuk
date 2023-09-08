@@ -1,3 +1,5 @@
 build/*
 !build/.config
 !build/Makefile
+!build/rootfs-overlay
+build/rootfs-overlay/root/.ssh/authorized_keys

@@ -25,11 +25,9 @@ This project is based on [Bootlin][3]'s Embedded Linux and Buildroot trainings.
 
 `build/host` contains the cross-compilation toolchain.
 
-`build/images` contains the bootloader, kernel, and root filesystem images.
+`build/images` contains the bootloader, kernel, device tree, and root filesystem images. The kernel image and device tree are installed in the target's `/boot` and loaded by U-Boot using `extlinux.conf`.
 
-## Installation
-
-The U-Boot bootloader, Linux kernel, and root filesystem images must be flashed to the microSD card.
+## Install
 
 Insert the SD card in the host system and run `dmesg` to find the device name (e.g. `sdb`).
 
@@ -40,14 +38,14 @@ First, unmount any mounted partitions:
 sudo umount /dev/sdb*
 ```
 
-Clear the first 32MB:
+Clear the begnning of the card:
 ```
 sudo dd if=/dev/zero of=/dev/sdb bs=1M count=32
 ```
 
-Then create partitions for the first and second stage bootloaders, kernel, and filesystem:
+Then create partitions for the first and second stage bootloaders (fsbl1, fsbl2, ssbl), and the root filesystem (root):
 ```
-sudo parted /dev/sdb
+$ sudo parted /dev/sdb
 
 GNU Parted 3.4
 Using /dev/sdb
@@ -56,39 +54,32 @@ Welcome to GNU Parted! Type 'help' to view a list of commands.
 (parted) mkpart fsbl1 0% 4095s
 (parted) mkpart fsbl2 4096s 6143s
 (parted) mkpart ssbl 6144s 10239s
-(parted) mkpart boot 10240s 43007s
-(parted) mkpart root 43008s 174079s
+(parted) mkpart root 10240s 141311s
 (parted) toggle 4 boot
 (parted) unit kiB
 (parted) print
 
 Model: Generic MassStorageClass (scsi)
-Disk /dev/sdb: 15558144kiB
+Disk /dev/sdb: 15.9GB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
-Disk Flags:
+Disk Flags: 
 
-Number  Start     End       Size      File system  Name   Flags
- 1      1024kiB   2048kiB   1024kiB                fsbl1
- 2      2048kiB   3072kiB   1024kiB                fsbl2
- 3      3072kiB   5120kiB   2048kiB                ssbl
- 4      5120kiB   21504kiB  16384kiB               boot   boot, esp
- 5      21504kiB  87040kiB  65536kiB               root
-```
-
-Finally, format the boot (kernel) partition as a FAT filesystem:
-```
-sudo mkfs.vfat -F 32 -n boot /dev/sdb4
+Number  Start   End     Size    File system  Name   Flags
+ 1      1049kB  2097kB  1049kB               fsbl1
+ 2      2097kB  3146kB  1049kB               fsbl2
+ 3      3146kB  5243kB  2097kB               ssbl
+ 4      5243kB  72.4MB  67.1MB               root   boot, esp
 ```
 
-And the root partition as ext4:
+Finally, format the root partition as an ext4 filesystem:
 ```
-sudo mkfs.ext4 -L rootfs -E nodiscard /dev/sdb5
+sudo mkfs.ext4 -L rootfs -E nodiscard /dev/sdb4
 ```
 
 ### Transfer Images
 
-Eject and re-insert the SD card. `rootfs` should automatically mount, but `boot` may not. Mount it with: `sudo mount /dev/sdb4 /media/$USER/boot`. Check that both partitions are mounted: `lsblk -f`
+Eject and re-insert the SD card. Check if `rootfs` is mounted (`lsblk -f`) and if not, mount it: `sudo mount /dev/sdb4 /mnt`.
 
 Flash the bootloader:
 ```
@@ -97,25 +88,14 @@ sudo dd if=build/images/u-boot-spl.stm32 of=/dev/sdb2 bs=1M conv=fdatasync
 sudo dd if=build/images/u-boot.img of=/dev/sdb3 bs=1M conv=fdatasync
 ```
 
-Copy the kernel image and device tree to `boot`:
-```
-sudo cp build/images/zImage build/images/stm32mp157a-dk1.dtb /media/$USER/boot/
-```
-
 Extract the root filesystem to `rootfs`:
 ```
-sudo tar -C /media/$USER/rootfs/ -xf build/images/rootfs.tar
+sudo tar -C /mnt -xf build/images/rootfs.tar
 ```
 
-Finally, create `/media/$USER/boot/extlinux/extlinux.conf` with the following content to tell U-Boot how to load the kernel:
-```
-label buildroot
-    kernel /zImage
-    devicetree /stm32mp157a-dk1.dtb
-    append console=ttySTM0,115200 root=/dev/mmcblk0p5 rootwait
-```
+## Connect
 
-## Connect to the Board
+### Serial I/O
 
 Insert the SD card and connect the Micro-B cable. Use a serial I/O tool like `tio` to communicate: `tio /dev/ttyACM0`
 
@@ -131,6 +111,37 @@ Welcome to Buildroot
 buildroot login: root
 #
 ```
+
+### Network
+
+The target IP address (192.168.0.2) is configured in the root filesystem overlay: `build/rootfs-overlay/etc/network`
+
+Find the host's ethernet interface name:
+```
+$ nmcli device status
+
+DEVICE             TYPE      STATE         CONNECTION    
+enx4865ee175e87    ethernet  connected     ethernet-enx4865ee175e87
+```
+
+Then configure a host IP address:
+```
+nmcli con add type ethernet ifname enx4865ee175e87 ip4 192.168.0.1/24
+```
+
+Test the connection:
+```
+$ ping 192.168.0.2
+
+PING 192.168.0.2 (192.168.0.2) 56(84) bytes of data.
+64 bytes from 192.168.0.2: icmp_seq=1 ttl=64 time=1.88 ms
+...
+```
+
+### SSH
+
+`dropbear` is included in the Buildroot configuration. Generate an SSH key pair and copy the public key to `build/rootfs-overlay/root/.ssh/authorized_keys`. Connect with `ssh root@192.168.0.2`.
+
 
 [1]: https://www.st.com/en/evaluation-tools/stm32mp157d-dk1.html
 [2]: https://buildroot.org/
