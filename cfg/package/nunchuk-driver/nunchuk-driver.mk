@@ -1,0 +1,7 @@
+NUNCHUK_DRIVER_VERSION = 1.0
+NUNCHUK_DRIVER_SITE = $(BR2_EXTERNAL_NUNCHUK_PATH)/../nunchuk
+NUNCHUK_DRIVER_SITE_METHOD = local
+NUNCHUK_DRIVER_LICENSE = GPL-2.0
+
+$(eval $(kernel-module))
+$(eval $(generic-package))

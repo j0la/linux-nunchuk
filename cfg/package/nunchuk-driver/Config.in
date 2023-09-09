@@ -1,0 +1,5 @@
+config BR2_PACKAGE_NUNCHUK_DRIVER
+    bool "nunchuk-driver"
+    depends on BR2_LINUX_KERNEL
+    help
+        Linux Kernel module for the I2C Nunchuk

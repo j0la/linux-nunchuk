@@ -135,7 +135,7 @@ buildroot login: root
 
 ### Network
 
-The target IP address (192.168.0.2) is configured in the root filesystem overlay: `build/rootfs-overlay/etc/network`
+The target IP address (192.168.0.2) is configured in `/etc/network/interfaces`.
 
 Find the host's ethernet interface name:
 ```
@@ -161,11 +161,46 @@ PING 192.168.0.2 (192.168.0.2) 56(84) bytes of data.
 
 ### SSH
 
-`dropbear` is included in the Buildroot configuration. Generate an SSH key pair and copy the public key to `build/rootfs-overlay/root/.ssh/authorized_keys`. Connect with `ssh root@192.168.0.2`.
+`dropbear` is included in the Buildroot configuration. Generate an SSH key pair and copy the public key to `cfg/board/rootfs-overlay/root/.ssh/authorized_keys`. Connect with `ssh root@192.168.0.2`.
 
+## Nunchuk
+
+`nunchuk/` contains Bootlin's Nunchuk device driver. `cfg/package/nunchuk-driver` is the Buildroot package.
+
+The custom device tree (`cfg/board/stm32mp157d-dk1.dts`) defines the Nunchuk on the I2C5 bus. Connect the Nunchuk to I2C5 according to the [pinout][6] (pins 3 and 5 on CN2). The device should show up at address 0x52:
+```
+# i2cdetect -y 1
+     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+00:          -- -- -- -- -- -- -- -- -- -- -- -- -- 
+10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+50: -- -- 52 -- -- -- -- -- -- -- -- -- -- -- -- -- 
+60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
+70: -- -- -- -- -- -- -- --  
+```
+
+Verify that the nunchuk driver can be loaded and finds the device:
+```
+# modprobe nunchuk
+[  144.047034] input: Wii Nunchuk as /devices/platform/soc/40015000.i2c/i2c-1/1-0052/input/input2
+[  144.055898] Nunchuk device probed successfully
+```
+
+Use `evtest` to watch input events:
+```
+# evtest
+No device specified, trying to scan all of /dev/input/event*
+Available devices:
+...
+/dev/input/event1:	Wii Nunchuk
+Select the device event number [0-1]: 1
+```
 
 [1]: https://www.st.com/en/evaluation-tools/stm32mp157d-dk1.html
 [2]: https://buildroot.org/
 [3]: https://bootlin.com/training/
 [4]: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 [5]: https://www.adafruit.com/product/4836
+[6]: https://wiki.stmicroelectronics.cn/stm32mpu/wiki/STM32MP157x-DKx_-_hardware_description#GPIO_mapping
