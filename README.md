@@ -21,11 +21,30 @@ This project is based on [Bootlin][3]'s Embedded Linux and Buildroot trainings.
 
 ## Build
 
-`build/` is the out-of-tree destination for Buildroot output. It also contains the `.config`. Run `make menuconfig` to edit the configuration and `make` to build (both from within `build/`).
+`cfg/` is the br2-external Buildroot tree. It contains project configuration and package recipes.
 
-`build/host` contains the cross-compilation toolchain.
+`build/` is the out-of-tree destination for Buildroot output.
 
-`build/images` contains the bootloader, kernel, device tree, and root filesystem images. The kernel image and device tree are installed in the target's `/boot` and loaded by U-Boot using `extlinux.conf`.
+For the first build, run:
+```
+linux-nunchuk/buildroot/ $ make BR2_EXTERNAL=../cfg O=../build menuconfig
+```
+
+Load the configuration:
+```
+linux-nunchuk/build/ $ make stm32mp157d-dk1_defconfig
+```
+
+From now on, use:
+```
+linux-nunchuk/build/ $ make menuconfig
+linux-nunchuk/build/ $ make
+```
+
+To update the defconfig (`cfg/configs/stm32mp157d-dk1_defconfig`):
+```
+linux-nunchuk/build/ $ make savedefconfig
+```
 
 ## Install
 
@@ -92,6 +111,8 @@ Extract the root filesystem to `rootfs`:
 ```
 sudo tar -C /mnt -xf build/images/rootfs.tar
 ```
+
+The kernel image and device tree are installed in the target's `/boot` and loaded by U-Boot using `/boot/extlinux/extlinux.conf`.
 
 ## Connect
 

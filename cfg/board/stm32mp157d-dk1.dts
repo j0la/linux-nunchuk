@@ -1,0 +1,12 @@
+/dts-v1/;
+#include "stm32mp157a-dk1.dts"
+
+&i2c5 {
+    status = "okay";
+    clock-frequency = <100000>;
+
+    nunchuk: joystick@52 {
+        compatible = "nintendo,nunchuk";
+        reg = <0x52>;
+    };
+};
